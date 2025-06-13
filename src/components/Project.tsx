@@ -5,6 +5,7 @@ import { Button, Input, Table, theme, Popconfirm, message } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import type { FilterValue, SorterResult } from "antd/es/table/interface";
 import type { InputRef } from "antd";
+import ProjectModal from "./ProjectModal";
 
 interface Project {
   id: string;
@@ -56,7 +57,7 @@ export default function Projects() {
               { key: "companyName", value: globalSearch },
             ]
           : filters,
-        sort: sortList,
+        sorts: sortList,
       };
 
       const { data } = await axiosClient.post(
@@ -258,8 +259,8 @@ export default function Projects() {
       key: "actions",
       width: 300,
       render: (_text, record) => (
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {/* <ProjectModal
+        <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "center" }}>
+          <ProjectModal
             mode="edit"
             project={record}
             onProjectChanged={() =>
@@ -272,14 +273,14 @@ export default function Projects() {
               )
             }
             buttonStyle={{ height: 36 }}
-          /> */}
+          />
           <Popconfirm
             title="Are you sure to delete this project?"
             onConfirm={() => handleDelete(record)}
             okText="Yes"
             cancelText="No"
           >
-            <Button danger style={{ height: 36, width: 150 }}>
+            <Button danger>
               <DeleteOutlined />
             </Button>
           </Popconfirm>
@@ -290,16 +291,28 @@ export default function Projects() {
 
   return (
     <>
-      <h2
+      <div
         style={{
-          borderRadius: borderRadiusLG,
-          backgroundColor: colorBgContainer,
-          padding: 8,
-          marginBottom: 10,
+          display: "flex",
+          justifyContent: "space-between",
+          margin: "1rem 0",
         }}
       >
-        Project list
-      </h2>
+        <h2 style={{ margin: 0 }}>List Project</h2>
+        <ProjectModal
+          mode="create"
+          onProjectChanged={() =>
+            loadProjects(
+              searchText,
+              pagination.current,
+              pagination.pageSize,
+              sorter,
+              []
+            )
+          }
+          buttonStyle={{ height: 36, width: 130 }}
+        />
+      </div>
 
       <Input.Search
         placeholder="Search global..."
@@ -312,12 +325,12 @@ export default function Projects() {
       />
 
       <Table
-        columns={columns}
-        dataSource={items}
-        pagination={pagination}
-        onChange={handleTableChange}
-        scroll={{ x: "max-content" }}
-      />
+          columns={columns}
+          dataSource={items}
+          pagination={pagination}
+          onChange={handleTableChange}
+          scroll={{ x: 900, y: 200 }}
+        />
     </>
   );
 }

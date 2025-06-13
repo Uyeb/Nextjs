@@ -1,5 +1,5 @@
 import React from "react";
-import { useRouter } from "next/router";  // dùng useRouter của next/router
+import { useRouter } from "next/router"; // dùng useRouter của next/router
 import { Form, Input, Button, message } from "antd";
 import axiosClient from "@/api/axiosClient";
 
@@ -12,7 +12,6 @@ const LoginForm: React.FC = () => {
   const router = useRouter();
 
   const onFinish = async (values: LoginFormValues) => {
-      console.log("Dữ liệu gửi đi:", values);
     try {
       const res = await axiosClient.post("/api/v1/Auth/sign-in", {
         username: values.username,
@@ -20,14 +19,11 @@ const LoginForm: React.FC = () => {
       });
 
       if (res.status === 200 && res.data.success) {
-        console.log("RESPONSE DATA:", res.data);
-
-        // Lưu token vào localStorage
         localStorage.setItem("accessToken", res.data.result.accessToken);
         localStorage.setItem("refreshToken", res.data.result.refreshToken);
 
         message.success("Đăng nhập thành công!");
-        router.push("/"); 
+        router.push("/");
       }
     } catch (error) {
       console.error("Đăng nhập thất bại:", error);

@@ -1,8 +1,8 @@
-"use client";
 import React from "react";
-import { Layout, Menu, theme } from "antd";
+import { Layout, Menu, theme, message } from "antd";
 import type { MenuProps } from "antd";
 import Projects from "./Project";
+import { useRouter } from "next/router";
 
 const { Header, Content, Footer } = Layout;
 
@@ -15,9 +15,25 @@ const items: MenuProps["items"] = [
 ];
 
 const App: React.FC = () => {
+  const router = useRouter();
+
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
+
+  const handleMenuClick = ({ key }: { key: string }) => {
+    if (key === '5') { // Logout
+      // Xóa token
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+
+      // Thông báo
+      message.success('Đăng xuất thành công!');
+
+      // Điều hướng về trang sign-in
+      router.push('/sign-in');
+    }
+  };
 
   return (
     <Layout style={{ height: "100vh" }}>
@@ -37,6 +53,7 @@ const App: React.FC = () => {
           mode="horizontal"
           items={items}
           style={{ flex: 1, minWidth: 0 }}
+          onClick={handleMenuClick}
         />
       </Header>
       <Content style={{ padding: "16px 24px", flex: 1 }}>
@@ -48,7 +65,7 @@ const App: React.FC = () => {
             borderRadius: borderRadiusLG,
           }}
         >
-          <Projects/>
+          <Projects />
         </div>
       </Content>
       <Footer style={{ background: colorBgContainer, textAlign: "center" }}>
