@@ -3,6 +3,7 @@ import { Layout, Menu, theme, message } from "antd";
 import type { MenuProps } from "antd";
 import Projects from "./Project";
 import { useRouter } from "next/router";
+import { LogoutOutlined } from "@ant-design/icons";
 
 const { Header, Content, Footer } = Layout;
 
@@ -11,7 +12,7 @@ const items: MenuProps["items"] = [
   { key: "2", label: "Management" },
   { key: "3", label: "Setting" },
   { key: "4", label: "Language" },
-  { key: "5", label: "Logout" },
+  { key: "5", label: <LogoutOutlined /> },
 ];
 
 const App: React.FC = () => {

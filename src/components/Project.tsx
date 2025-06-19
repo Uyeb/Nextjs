@@ -1,9 +1,9 @@
 import axiosClient from "../api/axiosClient";
-import { useRef, useState, useEffect } from "react";
-import { SearchOutlined, DeleteOutlined } from "@ant-design/icons";
-import { Button, Input, Table, theme, Popconfirm, message } from "antd";
+import { useRef, useState, useEffect, useCallback } from "react";
+import { SearchOutlined, DeleteOutlined, ReloadOutlined } from "@ant-design/icons";
+import { Button, Input, Table, Popconfirm, message } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
-import type { FilterValue, SorterResult } from "antd/es/table/interface";
+import type { SorterResult } from "antd/es/table/interface";
 import type { InputRef } from "antd";
 import ProjectModal from "./ProjectModal";
 
@@ -16,7 +16,7 @@ interface Project {
 }
 
 interface SortItem {
-  key?: string;
+  key: string;
   sort: number;
 }
 
@@ -29,72 +29,79 @@ export default function Projects() {
     pageSize: 20,
   });
   const [sorter, setSorter] = useState<SortItem[]>([]);
-  const [filteredInfo, setFilteredInfo] = useState<FilterInfo>({});
-  const [searchText, setSearchText] = useState<string | undefined>(undefined);
+  const [searchText, setSearchText] = useState<string>("");
   const [searchTextColumn, setSearchTextColumn] = useState<FilterInfo>({});
-  const searchInput = useRef<InputRef>(null);
   const [debounceText, setDebounceText] = useState<string>("");
+  const searchInput = useRef<InputRef>(null);
 
-  const {
-    token: { colorBgContainer, borderRadiusLG },
-  } = theme.useToken();
+  const loadProjects = useCallback(
+    async (
+      globalSearch = "",
+      page = 1,
+      size = 20,
+      sortList = sorter,
+      filters: { key: string; value: string }[] = []
+    ) => {
+      try {
+        const payload = {
+          pageNumber: page,
+          pageSize: size,
+          search: globalSearch
+            ? ["name", "province", "companyName"].map((key) => ({
+                key,
+                value: globalSearch,
+              }))
+            : filters,
+          sorts: sortList,
+        };
 
-  const loadProjects = async (
-    globalSearch = "",
-    page = 1,
-    size = 20,
-    sortList = sorter,
-    filters: { key: string; value: string }[] = []
-  ) => {
-    try {
-      const payload = {
-        pageNumber: page,
-        pageSize: size,
-        search: globalSearch
-          ? [
-              { key: "name", value: globalSearch },
-              { key: "province", value: globalSearch },
-              { key: "companyName", value: globalSearch },
-            ]
-          : filters,
-        sorts: sortList,
-      };
+        const { data } = await axiosClient.post(
+          "/api/v1/Project/search",
+          payload
+        );
+        const listItem = data.result.items.map((item: any) => ({
+          key: item.id,
+          ...item,
+        }));
 
-      const { data } = await axiosClient.post(
-        "/api/v1/Project/search",
-        payload
-      );
-      console.log("Data BE trả về:", data);
-      const listItem: Project[] = data.result.items.map((item: any) => ({
-        key: item.id,
-        ...item,
-      }));
-
-      setItems(listItem);
-      setPagination((prev) => ({
-        ...prev,
-        current: page,
-        pageSize: size,
-        total: data.result.totalCount,
-      }));
-    } catch (error: any) {
-      console.error("Error loading projects:", error);
-    }
-  };
+        setItems(listItem);
+        setPagination((prev) => ({
+          ...prev,
+          current: page,
+          pageSize: size,
+          total: data.result.totalCount,
+        }));
+      } catch (error) {
+        console.error("Error loading projects:", error);
+      }
+    },
+    [sorter]
+  );
 
   useEffect(() => {
-    console.log("useEffect mount lần đầu");
-
     loadProjects();
   }, []);
 
+  const refreshProjects = () => {
+    const filters = Object.entries(searchTextColumn)
+      .filter(([_, val]) => val)
+      .map(([key, value]) => ({ key, value: value! }));
+
+    loadProjects(
+      searchText || "",
+      pagination.current!,
+      pagination.pageSize!,
+      sorter,
+      filters
+    );
+  };
+
+  // Xử lý phân trang + sort
   const handleTableChange = (
-    paginationInfo: TablePaginationConfig,
-    filters: Record<string, FilterValue | null>,
+    { current = 1, pageSize = 20 }: TablePaginationConfig,
+    _: Record<string, any>,
     sorterInfo: SorterResult<Project> | SorterResult<Project>[]
   ) => {
-    const page = paginationInfo.current || 1;
-    const size = paginationInfo.pageSize || 20;
     let newSorter: SortItem[] = [];
 
     if (Array.isArray(sorterInfo)) {
@@ -117,12 +124,7 @@ export default function Projects() {
     }
 
     setSorter(newSorter);
-
-    const columnFilters = Object.entries(searchTextColumn)
-      .filter(([_, val]) => val && val.length > 0)
-      .map(([key, value]) => ({ key, value: value! }));
-
-    loadProjects(searchText || "", page, size, newSorter, columnFilters);
+    loadProjects(searchText || "", current, pageSize, newSorter);
   };
 
   const handleSearch = (
@@ -133,92 +135,78 @@ export default function Projects() {
     close();
     const value = selectedKeys[0] || "";
     const updatedSearch = { ...searchTextColumn, [dataIndex]: value };
-
     setSearchTextColumn(updatedSearch);
-    setSearchText(undefined);
+    setSearchText("");
 
     const filters = Object.entries(updatedSearch)
-      .filter(([_, val]) => val && val.length > 0)
+      .filter(([_, val]) => val)
       .map(([key, value]) => ({ key, value: value! }));
 
-    loadProjects("", 1, pagination.pageSize || 20, sorter, filters);
+    loadProjects("", 1, pagination.pageSize!, sorter, filters);
   };
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebounceText(searchText || "");
-    }, 500);
-
+    const handler = setTimeout(() => setDebounceText(searchText), 500);
     return () => clearTimeout(handler);
   }, [searchText]);
 
   useEffect(() => {
-    if (searchText !== undefined) {
+    if (searchText) {
       setSearchTextColumn({});
-      setFilteredInfo({});
-      loadProjects(debounceText, 1, pagination.pageSize || 20, sorter, []);
+      loadProjects(debounceText, 1, pagination.pageSize!, sorter);
     }
   }, [debounceText]);
 
   const getColumnSearchProps = (dataIndex: keyof Project) => ({
-    filterDropdown: ({
-      close,
-      setSelectedKeys,
-      selectedKeys,
-    }: {
-      close: () => void;
-      setSelectedKeys: (selectedKeys: React.Key[]) => void;
-      selectedKeys: React.Key[];
-    }): React.ReactNode => {
-      const currentSearchText = searchTextColumn[dataIndex] || "";
-
-      return (
-        <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
-          <Input
-            ref={searchInput}
-            placeholder={`Search ${dataIndex}`}
-            value={(selectedKeys[0] as string) ?? currentSearchText}
-            onChange={(e) =>
-              setSelectedKeys(e.target.value ? [e.target.value] : [])
-            }
-            onPressEnter={() =>
-              handleSearch(close, selectedKeys as string[], dataIndex as string)
-            }
-            style={{ marginBottom: 8, display: "block" }}
-          />
-        </div>
-      );
-    },
-
+    filterDropdown: ({ close, setSelectedKeys, selectedKeys }: any) => (
+      <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
+        <Input
+          ref={searchInput}
+          placeholder={`Search ${dataIndex}`}
+          value={
+            (selectedKeys[0] as string) ?? (searchTextColumn[dataIndex] || "")
+          }
+          onChange={(e) =>
+            setSelectedKeys(e.target.value ? [e.target.value] : [])
+          }
+          onPressEnter={() =>
+            handleSearch(close, selectedKeys as string[], dataIndex)
+          }
+          style={{ marginBottom: 8, display: "block" }}
+        />
+      </div>
+    ),
     filterIcon: (filtered: boolean) => (
       <SearchOutlined style={{ color: filtered ? "#1677ff" : undefined }} />
     ),
     filterDropdownProps: {
       onOpenChange: (open: boolean) => {
-        if (open) {
-          setTimeout(() => searchInput.current?.select(), 100);
-        }
+        if (open) setTimeout(() => searchInput.current?.select(), 100);
       },
     },
-    render: (text: string) => text,
   });
 
+  // Xóa project
   const handleDelete = async (record: Project) => {
     if (!record?.id) return message.error("Missing project ID to delete");
-
     try {
       await axiosClient.post(`/api/v1/Project/delete`, [record.id]);
       message.success("Deleted successfully!");
-      loadProjects(
-        searchText || "",
-        pagination.current || 1,
-        pagination.pageSize || 20,
-        sorter,
-        []
-      );
-    } catch (error: any) {
+      refreshProjects();
+    } catch (error) {
       console.error("Delete failed:", error);
     }
+  };
+
+  const resetReload = () => {
+    const defaultPagination = { current: 1, pageSize: 20 };
+
+    setPagination(defaultPagination);  
+    setSorter([]);                      
+    setSearchText('');               
+    setSearchTextColumn({});           
+
+    loadProjects("", 1, 20, [], []); 
   };
 
   const columns: ColumnsType<Project> = [
@@ -229,8 +217,6 @@ export default function Projects() {
       width: 300,
       ...getColumnSearchProps("name"),
       sorter: true,
-      sortDirections: ["descend", "ascend"],
-      filteredValue: filteredInfo.name ? [filteredInfo.name] : null,
     },
     {
       title: "Province",
@@ -239,8 +225,6 @@ export default function Projects() {
       width: 300,
       ...getColumnSearchProps("province"),
       sorter: true,
-      sortDirections: ["descend", "ascend"],
-      filteredValue: filteredInfo.province ? [filteredInfo.province] : null,
     },
     {
       title: "Company",
@@ -249,29 +233,17 @@ export default function Projects() {
       width: 300,
       ...getColumnSearchProps("companyName"),
       sorter: true,
-      sortDirections: ["descend", "ascend"],
-      filteredValue: filteredInfo.companyName
-        ? [filteredInfo.companyName]
-        : null,
     },
     {
       title: "",
       key: "actions",
       width: 300,
       render: (_text, record) => (
-        <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "center" }}>
+        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
           <ProjectModal
             mode="edit"
             project={record}
-            onProjectChanged={() =>
-              loadProjects(
-                searchText || "",
-                pagination.current || 1,
-                pagination.pageSize || 20,
-                sorter,
-                []
-              )
-            }
+            onProjectChanged={refreshProjects}
             buttonStyle={{ height: 36 }}
           />
           <Popconfirm
@@ -292,30 +264,28 @@ export default function Projects() {
   return (
     <>
       <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          margin: "1rem 0",
-        }}
-      >
-        <h2 style={{ margin: 0 }}>List Project</h2>
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        margin: "1rem 0",
+      }}
+    >
+      <h2 style={{ margin: 0 }}>List Project</h2>
+      <div style={{ display: "flex", gap: 8 }}>
+        <Button onClick={resetReload} style={{ height: 36, width: 42 }}>
+          <ReloadOutlined />
+        </Button>
+
         <ProjectModal
           mode="create"
-          onProjectChanged={() =>
-            loadProjects(
-              searchText,
-              pagination.current,
-              pagination.pageSize,
-              sorter,
-              []
-            )
-          }
+          onProjectChanged={refreshProjects}
           buttonStyle={{ height: 36, width: 130 }}
         />
       </div>
+    </div>
 
       <Input.Search
-        placeholder="Search global..."
+        placeholder="Search"
         allowClear
         enterButton
         style={{ maxWidth: 400, marginBottom: 20 }}
@@ -325,12 +295,12 @@ export default function Projects() {
       />
 
       <Table
-          columns={columns}
-          dataSource={items}
-          pagination={pagination}
-          onChange={handleTableChange}
-          scroll={{ x: 900, y: 200 }}
-        />
+        columns={columns}
+        dataSource={items}
+        pagination={pagination}
+        onChange={handleTableChange}
+        scroll={{ x: 900, y: 200 }}
+      />
     </>
   );
 }

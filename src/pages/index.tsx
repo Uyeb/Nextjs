@@ -1,13 +1,13 @@
 import App from "@/components/Layout";
+import { ProtectedRoute } from "@/components/ProjectedRouter";
 
 
 export default function Home() {
   return (
     <div>
-      
-        <App/>
-      
-      
+        <ProtectedRoute>
+          <App/>
+        </ProtectedRoute>
     </div>
   );
 }

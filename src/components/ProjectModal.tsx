@@ -1,17 +1,5 @@
-import { useState, useEffect } from "react";
-import {
-  Button,
-  Modal,
-  Form,
-  Input,
-  Typography,
-  Row,
-  Col,
-  Divider,
-  message,
-} from "antd";
-import { FormInstance } from "antd/es/form";
-import { CSSProperties } from "react";
+import React, { useState, useEffect, CSSProperties } from "react";
+import { Button, Modal, Form, Input, Typography, Row, Col, Divider } from "antd";
 import axiosClient from "@/api/axiosClient";
 import { SettingOutlined } from "@ant-design/icons";
 
@@ -22,14 +10,14 @@ type Project = {
   name: string;
   province: string;
   companyName: string;
-  contractorName?: string;
-  createdBy?: string;
-  sizeUnit?: string;
-  totalArea?: string;
+  contractorName: string;
+  createdBy: string;
+  sizeUnit: string;
+  totalArea: number;
 };
 
 type ProjectModalProps = {
-  project?: Project;
+  project?: Partial<Project>;
   onProjectChanged?: () => void;
   mode?: "create" | "edit";
   buttonStyle?: CSSProperties;
@@ -41,26 +29,35 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
   mode = "create",
   buttonStyle,
 }) => {
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
 
   const isEdit = mode === "edit";
 
   useEffect(() => {
+    if (!form) return;
+
     if (isModalOpen && isEdit && project) {
       form.setFieldsValue(project);
+    } else if (isModalOpen && !isEdit) {
+      form.resetFields();
     }
-  }, [isModalOpen, isEdit, project, form]);
+  }, [isModalOpen, isEdit, project]);
+
 
   const showModal = () => setIsModalOpen(true);
+  const handleCancel = () => {
+    setIsModalOpen(false);
+  };
 
   const handleOk = async () => {
     try {
       const values = await form.validateFields();
       const formData = new FormData();
-      Object.entries(values).forEach(([key, value]) => {
-        formData.append(key, String(value));
-      });
+
+      Object.entries(values).forEach(([key, value]) =>
+        formData.append(key, String(value))
+      );
 
       const url = isEdit ? `/api/v2/Project/${project?.id}` : "/api/v2/Project";
       const method = isEdit ? "put" : "post";
@@ -69,40 +66,50 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
         method,
         url,
         data: formData,
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       setIsModalOpen(false);
       form.resetFields();
-
-      if (onProjectChanged) onProjectChanged();
+      onProjectChanged?.(); 
     } catch (error) {
-      console.error(`Lỗi khi ${isEdit ? "cập nhật" : "tạo"} project:`, error);
+      console.error(`${isEdit ? "Update" : "Create"} project error:`, error);
     }
   };
 
-  const handleCancel = () => {
-    setIsModalOpen(false);
-    form.resetFields();
-  };
+  const renderExtraInfo = () => (
+    <>
+      <Divider />
+      <Row gutter={[16, 8]}>
+        {[
+          { label: "Created by:", value: project?.createdBy },
+          { label: "Data size:", value: project?.sizeUnit },
+          { label: "Total area:", value: project?.totalArea },
+        ].map(({ label, value }) => (
+          <React.Fragment key={label}>
+            <Col span={8}>
+              <Text strong>{label}</Text>
+            </Col>
+            <Col span={16}>
+              <Text>{value}</Text>
+            </Col>
+          </React.Fragment>
+        ))}
+      </Row>
+    </>
+  );
 
   return (
     <>
       <Button
-        type={isEdit ? "default" : "primary"} 
+        type={isEdit ? "default" : "primary"}
         onClick={showModal}
-        style={
-          isEdit
-            ? { backgroundColor: "white", border: "1px solid #d9d9d9" }
-            : buttonStyle
-        } 
+        style={isEdit ? { backgroundColor: "white", border: "1px solid #d9d9d9" } : buttonStyle}
       >
         {isEdit ? (
-          <SettingOutlined style={{ color: "black", fontSize: 20 }} /> 
+          <SettingOutlined style={{ color: "black", fontSize: 20 }} />
         ) : (
-          "+ Create Project" 
+          "+ Create Project"
         )}
       </Button>
 
@@ -111,7 +118,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
         open={isModalOpen}
         onOk={handleOk}
         onCancel={handleCancel}
-        closable={{ "aria-label": "Custom Close Button" } as any} // type workaround
+        destroyOnHidden
       >
         <Form
           form={form}
@@ -119,70 +126,33 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
           wrapperCol={{ span: 18 }}
           layout="horizontal"
         >
-          <Form.Item
-            label="Project name"
-            name="name"
-            rules={[{ required: true, message: "Please input project name!" }]}
-          >
-            <Input placeholder="Input project name" />
-          </Form.Item>
-
-          <Form.Item
-            label="Province"
-            name="province"
-            rules={[{ required: true, message: "Please input province!" }]}
-          >
-            <Input placeholder="Input province" />
-          </Form.Item>
-
-          <Form.Item
-            label="Company name"
-            name="companyName"
-            rules={[{ required: true, message: "Please input company name!" }]}
-          >
-            <Input placeholder="Input company name" />
-          </Form.Item>
+          {[
+            { name: "name", label: "Project name" },
+            { name: "province", label: "Province" },
+            { name: "companyName", label: "Company name" },
+          ].map(({ name, label }) => (
+            <Form.Item
+              key={name}
+              label={label}
+              name={name}
+              rules={[{ required: true, message: `Please input ${label.toLowerCase()}!` }]}
+            >
+              <Input placeholder={`Input ${label.toLowerCase()}`} />
+            </Form.Item>
+          ))}
 
           {!isEdit && (
             <Form.Item
               label="Contractor name"
               name="contractorName"
-              rules={[
-                { required: true, message: "Please input contractor name!" },
-              ]}
+              rules={[{ required: true, message: "Please input contractor name!" }]}
             >
               <Input placeholder="Input contractor name" />
             </Form.Item>
           )}
         </Form>
 
-        {isEdit && project && (
-          <>
-            <Divider />
-            <Row gutter={[16, 8]}>
-              <Col span={8}>
-                <Text strong>Created by:</Text>
-              </Col>
-              <Col span={16}>
-                <Text>{project.createdBy}</Text>
-              </Col>
-
-              <Col span={8}>
-                <Text strong>Data size:</Text>
-              </Col>
-              <Col span={16}>
-                <Text>{project.sizeUnit}</Text>
-              </Col>
-
-              <Col span={8}>
-                <Text strong>Total area:</Text>
-              </Col>
-              <Col span={16}>
-                <Text>{project.totalArea}</Text>
-              </Col>
-            </Row>
-          </>
-        )}
+        {isEdit && project && renderExtraInfo()}
       </Modal>
     </>
   );
