@@ -2,6 +2,7 @@ import React from "react";
 import { useRouter } from "next/router"; // dùng useRouter của next/router
 import { Form, Input, Button, message } from "antd";
 import axiosClient from "@/api/axiosClient";
+import { setCookie } from 'cookies-next'; 
 
 interface LoginFormValues {
   username: string;
@@ -12,26 +13,24 @@ const LoginForm: React.FC = () => {
   const router = useRouter();
 
   const onFinish = async (values: LoginFormValues) => {
-    try {
-      const res = await axiosClient.post("/api/v1/Auth/sign-in", {
-        username: values.username,
-        password: values.password,
-      });
+  try {
+    const res = await axiosClient.post("/api/v1/Auth/sign-in", {
+      username: values.username,
+      password: values.password,
+    });
 
-      if (res.status === 200 && res.data.success) {
-        localStorage.setItem("accessToken", res.data.result.accessToken);
-        localStorage.setItem("refreshToken", res.data.result.refreshToken);
+    if (res.status === 200 && res.data.success) {
+      setCookie('accessToken', res.data.result.accessToken, { maxAge: 60 * 60 * 24, path : '/' }); 
+      console.log("Login response:", res.data);
 
-        message.success("Đăng nhập thành công!");
-        router.push("/");
-      }
-    } catch (error) {
-      console.error("Đăng nhập thất bại:", error);
-      message.error(
-        "Đăng nhập thất bại. Vui lòng kiểm tra tên người dùng hoặc mật khẩu."
-      );
+      message.success("Đăng nhập thành công!");
+      router.push("/");
     }
-  };
+  } catch (error) {
+    console.log("Lỗi API:", error); 
+    message.error("Đăng nhập thất bại.");
+  }
+};
 
   const onFinishFailed = (errorInfo: any) => {
     console.log("Thất bại:", errorInfo);

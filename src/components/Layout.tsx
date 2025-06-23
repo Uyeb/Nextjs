@@ -4,6 +4,7 @@ import type { MenuProps } from "antd";
 import Projects from "./Project";
 import { useRouter } from "next/router";
 import { LogoutOutlined } from "@ant-design/icons";
+import { deleteCookie } from "cookies-next";
 
 const { Header, Content, Footer } = Layout;
 
@@ -23,16 +24,11 @@ const App: React.FC = () => {
   } = theme.useToken();
 
   const handleMenuClick = ({ key }: { key: string }) => {
-    if (key === '5') { // Logout
-      // Xóa token
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-
-      // Thông báo
-      message.success('Đăng xuất thành công!');
-
-      // Điều hướng về trang sign-in
-      router.push('/sign-in');
+    if (key === "5") {
+      // Logout
+      deleteCookie("accessToken"); // xóa cookie
+      message.success("Đăng xuất thành công!");
+      router.push("/sign-in");
     }
   };
 

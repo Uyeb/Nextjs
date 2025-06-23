@@ -1,17 +1,16 @@
 import axios, { InternalAxiosRequestConfig, AxiosError } from 'axios';
+import { getCookie } from 'cookies-next';
 
 const axiosClient = axios.create({
-  baseURL: '',
-  headers: {
-    'Content-Type': 'application/json-patch+json',
-  },
+  baseURL: '', 
+  withCredentials: true, 
 });
 
 axiosClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('accessToken');
+    const token = getCookie('accessToken'); 
     if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`; 
     }
     return config;
   },
