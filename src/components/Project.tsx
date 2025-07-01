@@ -1,11 +1,16 @@
 import axiosClient from "../api/axiosClient";
 import { useRef, useState, useEffect, useCallback } from "react";
-import { SearchOutlined, DeleteOutlined, ReloadOutlined } from "@ant-design/icons";
+import {
+  SearchOutlined,
+  DeleteOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
 import { Button, Input, Table, Popconfirm, message } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import type { SorterResult } from "antd/es/table/interface";
 import type { InputRef } from "antd";
 import ProjectModal from "./ProjectModal";
+import { useRouter } from "next/router";
 
 interface Project {
   id: string;
@@ -33,6 +38,7 @@ export default function Projects() {
   const [searchTextColumn, setSearchTextColumn] = useState<FilterInfo>({});
   const [debounceText, setDebounceText] = useState<string>("");
   const searchInput = useRef<InputRef>(null);
+  const router = useRouter();
 
   const loadProjects = useCallback(
     async (
@@ -151,7 +157,7 @@ export default function Projects() {
   }, [searchText]);
 
   useEffect(() => {
-    if (searchText) {
+    if (debounceText !== undefined) {
       setSearchTextColumn({});
       loadProjects(debounceText, 1, pagination.pageSize!, sorter);
     }
@@ -186,6 +192,10 @@ export default function Projects() {
     },
   });
 
+  const handleRowClick = (record: Project) => {
+    router.push(`/${record.id}/area`);
+  };
+
   // Xóa project
   const handleDelete = async (record: Project) => {
     if (!record?.id) return message.error("Missing project ID to delete");
@@ -201,12 +211,12 @@ export default function Projects() {
   const resetReload = () => {
     const defaultPagination = { current: 1, pageSize: 20 };
 
-    setPagination(defaultPagination);  
-    setSorter([]);                      
-    setSearchText('');               
-    setSearchTextColumn({});           
+    setPagination(defaultPagination);
+    setSorter([]);
+    setSearchText("");
+    setSearchTextColumn({});
 
-    loadProjects("", 1, 20, [], []); 
+    loadProjects("", 1, 20, [], []);
   };
 
   const columns: ColumnsType<Project> = [
@@ -264,33 +274,31 @@ export default function Projects() {
   return (
     <>
       <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        margin: "1rem 0",
-      }}
-    >
-      <h2 style={{ margin: 0 }}>List Project</h2>
-      <div style={{ display: "flex", gap: 8 }}>
-        <Button onClick={resetReload} style={{ height: 36, width: 42 }}>
-          <ReloadOutlined />
-        </Button>
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          margin: "1rem 0",
+        }}
+      >
+        <h2 style={{ margin: 0 }}>List Project</h2>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button onClick={resetReload} style={{ height: 36, width: 42 }}>
+            <ReloadOutlined />
+          </Button>
 
-        <ProjectModal
-          mode="create"
-          onProjectChanged={refreshProjects}
-          buttonStyle={{ height: 36, width: 130 }}
-        />
+          <ProjectModal
+            mode="create"
+            onProjectChanged={refreshProjects}
+            buttonStyle={{ height: 36, width: 130 }}
+          />
+        </div>
       </div>
-    </div>
 
-      <Input.Search
+      <Input
         placeholder="Search"
         allowClear
-        enterButton
         style={{ maxWidth: 400, marginBottom: 20 }}
         onChange={(e) => setSearchText(e.target.value)}
-        onSearch={(val) => setSearchText(val)}
         value={searchText}
       />
 
@@ -300,6 +308,9 @@ export default function Projects() {
         pagination={pagination}
         onChange={handleTableChange}
         scroll={{ x: 900, y: 200 }}
+        onRow={(record) => ({
+          onClick: () => handleRowClick(record),
+        })}
       />
     </>
   );

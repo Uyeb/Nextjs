@@ -1,9 +1,5 @@
-import App from "@/components/Layout";
+import Projects from '../components/Project';
 
-export default function Home() {
-  return (
-    <div>
-      <App />
-    </div>
-  );
+export default function HomePage() {
+  return <Projects />;
 }

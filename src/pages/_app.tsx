@@ -1,6 +1,22 @@
-import "@/styles/globals.css";
-import type { AppProps } from "next/app";
+// src/pages/_app.tsx
+import type { AppProps } from 'next/app';
+import { useRouter } from 'next/router';
+import Layout from '@/components/Layout';
+import '../styles/globals.css';
 
-export default function App({ Component, pageProps }: AppProps) {
-  return <Component {...pageProps} />;
-}
+const MyApp = ({ Component, pageProps }: AppProps) => {
+  const router = useRouter();
+
+  // Kiểm tra nếu path hiện tại là trang login
+  const isNoLayout = router.pathname === '/sign-in';
+
+  return isNoLayout ? (
+    <Component {...pageProps} />
+  ) : (
+    <Layout>
+      <Component {...pageProps} />
+    </Layout>
+  );
+};
+
+export default MyApp;

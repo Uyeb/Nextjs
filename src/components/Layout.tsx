@@ -1,14 +1,13 @@
+// src/components/Layout.tsx
 import React from "react";
-import { Layout, Menu, theme, message } from "antd";
-import type { MenuProps } from "antd";
-import Projects from "./Project";
+import { Layout as AntLayout, Menu, theme, message } from "antd";
 import { useRouter } from "next/router";
 import { LogoutOutlined } from "@ant-design/icons";
 import { deleteCookie } from "cookies-next";
 
-const { Header, Content, Footer } = Layout;
+const { Header, Content, Footer } = AntLayout;
 
-const items: MenuProps["items"] = [
+const items = [
   { key: "1", label: "Contact us" },
   { key: "2", label: "Management" },
   { key: "3", label: "Setting" },
@@ -16,24 +15,22 @@ const items: MenuProps["items"] = [
   { key: "5", label: <LogoutOutlined /> },
 ];
 
-const App: React.FC = () => {
+const Layout = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
-
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
 
   const handleMenuClick = ({ key }: { key: string }) => {
     if (key === "5") {
-      // Logout
-      deleteCookie("accessToken"); // xóa cookie
+      deleteCookie("accessToken");
       message.success("Đăng xuất thành công!");
       router.push("/sign-in");
     }
   };
 
   return (
-    <Layout style={{ height: "100vh" }}>
+    <AntLayout style={{ height: "100vh" }}>
       <Header
         style={{
           position: "sticky",
@@ -62,14 +59,14 @@ const App: React.FC = () => {
             borderRadius: borderRadiusLG,
           }}
         >
-          <Projects />
+          {children}
         </div>
       </Content>
       <Footer style={{ background: colorBgContainer, textAlign: "center" }}>
         Ant Design ©{new Date().getFullYear()} Created by Ant UED
       </Footer>
-    </Layout>
+    </AntLayout>
   );
 };
 
-export default App;
+export default Layout;
