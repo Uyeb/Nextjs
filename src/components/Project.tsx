@@ -34,7 +34,7 @@ export default function Projects() {
     pageSize: 20,
   });
   const [sorter, setSorter] = useState<SortItem[]>([]);
-  const [searchText, setSearchText] = useState<string>("");
+  const [searchText, setSearchText] = useState<string | undefined>();
   const [searchTextColumn, setSearchTextColumn] = useState<FilterInfo>({});
   const [debounceText, setDebounceText] = useState<string>("");
   const searchInput = useRef<InputRef>(null);
@@ -83,10 +83,6 @@ export default function Projects() {
     },
     [sorter]
   );
-
-  useEffect(() => {
-    loadProjects();
-  }, []);
 
   const refreshProjects = () => {
     const filters = Object.entries(searchTextColumn)
@@ -152,15 +148,12 @@ export default function Projects() {
   };
 
   useEffect(() => {
-    const handler = setTimeout(() => setDebounceText(searchText), 500);
+    const handler = setTimeout(() => setDebounceText(searchText || ""), 500);
     return () => clearTimeout(handler);
   }, [searchText]);
 
   useEffect(() => {
-    if (debounceText !== undefined) {
-      setSearchTextColumn({});
-      loadProjects(debounceText, 1, pagination.pageSize!, sorter);
-    }
+    loadProjects(debounceText || "", 1, pagination.pageSize!, sorter);
   }, [debounceText]);
 
   const getColumnSearchProps = (dataIndex: keyof Project) => ({
@@ -227,6 +220,10 @@ export default function Projects() {
       width: 300,
       ...getColumnSearchProps("name"),
       sorter: true,
+      onCell: (record) => ({
+        onClick: () => handleRowClick(record),
+        style: { cursor: "pointer" },
+      }),
     },
     {
       title: "Province",
@@ -235,6 +232,10 @@ export default function Projects() {
       width: 300,
       ...getColumnSearchProps("province"),
       sorter: true,
+      onCell: (record) => ({
+        onClick: () => handleRowClick(record),
+        style: { cursor: "pointer" },
+      }),
     },
     {
       title: "Company",
@@ -243,6 +244,10 @@ export default function Projects() {
       width: 300,
       ...getColumnSearchProps("companyName"),
       sorter: true,
+      onCell: (record) => ({
+        onClick: () => handleRowClick(record),
+        style: { cursor: "pointer" },
+      }),
     },
     {
       title: "",
@@ -308,9 +313,6 @@ export default function Projects() {
         pagination={pagination}
         onChange={handleTableChange}
         scroll={{ x: 900, y: 200 }}
-        onRow={(record) => ({
-          onClick: () => handleRowClick(record),
-        })}
       />
     </>
   );

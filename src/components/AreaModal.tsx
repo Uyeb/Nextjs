@@ -1,129 +1,190 @@
-// components/modals/AddAreaModal.tsx
-
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, Form, Select, message, Divider, Button } from "antd";
 import axiosClient from "@/api/axiosClient";
+import { PlusOutlined, SyncOutlined } from "@ant-design/icons";
 
-interface AddAreaModalProps {
-  visible: boolean;
-  onCancel: () => void;
-  onOk: () => void;
+interface AreaModalProps {
+  mode: "create" | "edit";
   projectId: string;
+  area?: {
+    id: string;
+    name: string;
+  };
+  onAreaChanged: () => void;
+  buttonStyle?: React.CSSProperties;
 }
 
-const AddAreaModal: React.FC<AddAreaModalProps> = ({
-  visible,
-  onCancel,
-  onOk,
+const AreaModal: React.FC<AreaModalProps> = ({
+  mode,
   projectId,
+  area,
+  onAreaChanged,
+  buttonStyle,
 }) => {
+  const [visible, setVisible] = useState(false);
   const [form] = Form.useForm();
   const [filterOptions, setFilterOptions] = useState<
     { id: string; name: string; stageName: string }[]
   >([]);
   const [loading, setLoading] = useState(false);
+  const [areaInfoLoaded, setAreaInfoLoaded] = useState(false);
 
-  const getFilters = async () => {
+  const isEdit = mode === "edit" && area?.id;
+
+  const loadFilters = async () => {
     try {
       const res = await axiosClient.post("/api/v1/admin/settings/filter", {});
       setFilterOptions(res.data.result?.items || []);
-    } catch (error: any) {
-      console.error("getFilters error", error?.response?.data || error);
+    } catch (error) {
       message.error("Failed to load setting list");
     }
   };
 
-  const handleSubmit = async () => {
-  try {
-    const values = await form.validateFields();
+  const loadAreaInfo = async () => {
+    if (!isEdit) return;
 
-    // Tìm object tương ứng với filterId (thực tế là stageName)
-    const selected = filterOptions.find(
-      (item) => item.stageName === values.filterId
-    );
+    try {
+      const res = await axiosClient.get(`/api/v1/ProjectArea/${area?.id}`);
+      const { typeofWork } = res.data.result;
 
-    if (!selected) {
-      message.error("Invalid filter selected");
-      return;
+      if (typeofWork) {
+        const workIds = JSON.parse(typeofWork);
+        const selected = filterOptions.find((item) => item.id === workIds[0]);
+
+        if (selected) {
+          form.setFieldsValue({ filterId: selected.stageName });
+        }
+      }
+      setAreaInfoLoaded(true);
+    } catch (error) {
+      message.error("Failed to load area info");
     }
-    
-    const payload = {
-      typeOfWork: selected.id,
-      type: 0,
-      projectId,
-    };
+  };
 
-    setLoading(true);
-    await axiosClient.post("/api/v2/ProjectArea", payload);
-    message.success("Area added successfully");
+  const openModal = () => {
     form.resetFields();
-    onOk();
-  } catch (error) {
-    console.error(error);
-    message.error("Failed to add area");
-  } finally {
-    setLoading(false);
-  }
-};
+    setVisible(true);
+  };
 
-  const handleClose = () => {
+  const closeModal = () => {
     form.resetFields();
-    onCancel();
+    setVisible(false);
   };
 
   useEffect(() => {
-    if (visible && filterOptions.length === 0) {
-      getFilters();
+    if (visible) {
+      loadFilters();
     }
   }, [visible]);
 
-  return (
-    <Modal
-      open={visible}
-      onCancel={handleClose}
-      title={
-        <span style={{ color: "#f5222d", fontWeight: 600 }}>Add new area</span>
+  useEffect(() => {
+    if (visible && isEdit && filterOptions.length > 0) {
+      loadAreaInfo();
+    }
+  }, [visible, isEdit, filterOptions]);
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      const selected = filterOptions.find(
+        (item) => item.stageName === values.filterId
+      );
+
+      if (!selected) {
+        message.error("Invalid filter selected");
+        return;
       }
-      confirmLoading={loading}
-      closable
-      footer={[
-        <Button
-          key="submit"
-          type="primary"
-          onClick={handleSubmit}
-          loading={loading}
-        >
-          Add area
-        </Button>,
-      ]}
-    >
-      <Divider
-        style={{ margin: "12px 0", borderBlockStart: "1px solid #d9d9d9" }}
-      />
-      <Form
-        form={form}
-        layout="horizontal"
-        labelCol={{ span: 8 }}
-        wrapperCol={{ span: 18 }}
+
+      const payload = {
+        typeOfWork: selected.id,
+        type: 0,
+        projectId,
+      };
+
+      setLoading(true);
+
+      if (isEdit) {
+        await axiosClient.put(
+          `/api/v2/ProjectArea/update/${area?.id}`,
+          payload
+        );
+        message.success("Area updated successfully");
+      } else {
+        await axiosClient.post("/api/v2/ProjectArea", payload);
+        message.success("Area added successfully");
+      }
+
+      closeModal();
+      onAreaChanged();
+    } catch (error) {
+      message.error(isEdit ? "Failed to update area" : "Failed to add area");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <Button
+        type={mode === "create" ? "primary" : "default"}
+        icon={mode === "create" ? <PlusOutlined /> : <SyncOutlined />}
+        onClick={openModal}
+        style={
+          isEdit
+            ? { backgroundColor: "white", border: "1px solid #d9d9d9" }
+            : buttonStyle
+        }
       >
-        <Form.Item
-          label="Setting construction:"
-          name="filterId"
-          rules={[
-            { required: true, message: "Please select setting construction" },
-          ]}
+        {mode === "create" ? "Add Area" : ""}
+      </Button>
+
+      <Modal
+        open={visible}
+        onCancel={closeModal}
+        title={
+          <span style={{ fontWeight: 600 }}>
+            {mode === "create" ? "Add new area" : "Edit area"}
+          </span>
+        }
+        confirmLoading={loading}
+        onOk={handleSubmit}
+        destroyOnHidden
+        okText={mode === "create" ? "Add Area" : "Update Area"}
+        footer={[
+          <Button
+            key="submit"
+            type="primary"
+            loading={loading}
+            onClick={handleSubmit}
+          >
+            {mode === "create" ? "Add Area" : "Update Area"}
+          </Button>,
+        ]}
+      >
+        <Divider />
+        <Form
+          form={form}
+          layout="horizontal"
+          labelCol={{ span: 8 }}
+          wrapperCol={{ span: 18 }}
         >
-          <Select placeholder="Please select setting construction" showSearch>
-            {filterOptions.map((item) => (
-              <Select.Option key={item.stageName} value={item.stageName}>
-                {item.name}
-              </Select.Option>
-            ))}
-          </Select>
-        </Form.Item>
-      </Form>
-    </Modal>
+          <Form.Item
+            label="Setting construction:"
+            name="filterId"
+            rules={[{ required: true, message: "Please select setting" }]}
+          >
+            <Select placeholder="Please select setting" showSearch>
+              {filterOptions.map((item) => (
+                <Select.Option key={item.stageName} value={item.stageName}>
+                  {item.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
   );
 };
 
-export default AddAreaModal;
+export default AreaModal;

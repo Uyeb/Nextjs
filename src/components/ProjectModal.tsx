@@ -118,7 +118,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
         open={isModalOpen}
         onOk={handleOk}
         onCancel={handleCancel}
-        destroyOnHidden
+        destroyOnHidden  
       >
         <Form
           form={form}

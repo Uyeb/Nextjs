@@ -1,22 +1,23 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Table, Input, Button } from "antd";
-import { ReloadOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { CheckCircleOutlined, DeleteOutlined } from "@ant-design/icons";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import type { SorterResult } from "antd/es/table/interface";
 import axiosClient from "@/api/axiosClient";
 import { useRouter } from "next/router";
-import AddAreaModal from "@/components/AreaModal";
+import AreaModal from "@/components/AreaModal";
+import { message, Popconfirm } from "antd";
 
 interface ProjectArea {
   id: string;
   key: string;
   name: string;
   updatedOn: string;
-  fileVersionDtos?: {
-    objectKey?: string;
+  fileVersionDtos: {
+    objectKey: string;
   };
-  totalList?: number;
-  totalPile?: number;
+  totalList: number;
+  totalPile: number;
 }
 
 interface SortItem {
@@ -35,9 +36,8 @@ export default function ProjectAreas() {
   const [debounceSearchText, setDebounceSearchText] = useState<string>("");
   const router = useRouter();
   const { projectId } = router.query;
-  const [showAddModal, setShowAddModal] = useState(false);
 
-  // Debounce input
+  // Debounce
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebounceSearchText(searchText);
@@ -46,7 +46,6 @@ export default function ProjectAreas() {
     return () => clearTimeout(handler);
   }, [searchText]);
 
-  // Load areas
   const loadProjectAreas = useCallback(
     async (
       globalSearch = "",
@@ -97,21 +96,12 @@ export default function ProjectAreas() {
     [sorter, projectId]
   );
 
-  // Reload on mount or projectId change
   useEffect(() => {
     if (projectId) {
-      loadProjectAreas();
-    }
-  }, [projectId]);
-
-  // Reload on debounceSearchText change
-  useEffect(() => {
-    if (projectId !== undefined) {
       loadProjectAreas(debounceSearchText, 1, pagination.pageSize!, sorter);
     }
-  }, [debounceSearchText]);
+  }, [projectId, debounceSearchText]);
 
-  // Table change handler
   const handleTableChange = (
     { current = 1, pageSize = 20 }: TablePaginationConfig,
     _: any,
@@ -137,17 +127,27 @@ export default function ProjectAreas() {
         },
       ];
     }
-
     setSorter(newSorter);
     loadProjectAreas(debounceSearchText, current, pageSize, newSorter);
   };
 
-  const resetReload = () => {
-    setPagination({ current: 1, pageSize: 20 });
-    setSorter([]);
-    setSearchText("");
-    setDebounceSearchText(""); // Reset debounce too
-    loadProjectAreas("", 1, 20, []);
+  // Xóa area
+  const handleDelete = async (record: ProjectArea) => {
+    if (!record?.id) return message.error("Missing area ID to delete");
+    try {
+      await axiosClient.post(
+        "/api/v1/ProjectArea/delete",
+        JSON.stringify(record.id),
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+      message.success("Deleted successfully!");
+      loadProjectAreas();
+    } catch (error) {
+      console.error("Delete failed:", error);
+      message.error("Delete failed!");
+    }
   };
 
   const columns: ColumnsType<ProjectArea> = [
@@ -200,6 +200,7 @@ export default function ProjectAreas() {
               color: "#52c41a",
               display: "flex",
               alignItems: "center",
+              justifyContent: "center",
               gap: 8,
             }}
           >
@@ -222,6 +223,31 @@ export default function ProjectAreas() {
       width: 100,
       sorter: true,
     },
+    {
+      title: "",
+      dataIndex: "actions",
+      key: "actions",
+      width: 140,
+      render: (_, record) => (
+        <div style={{ display: "flex", gap: 8 }}>
+          <AreaModal
+            mode="edit"
+            projectId={projectId as string}
+            area={record}
+            onAreaChanged={loadProjectAreas}
+            buttonStyle={{ padding: 0 }}
+          />
+          <Popconfirm
+            title="Are you sure to delete this area?"
+            onConfirm={() => handleDelete(record)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Button danger icon={<DeleteOutlined />} style={{ padding: 0 }} />
+          </Popconfirm>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -235,17 +261,11 @@ export default function ProjectAreas() {
       >
         <h2>List Area</h2>
         <div style={{ display: "flex", gap: 8 }}>
-          <Button type="primary" onClick={() => setShowAddModal(true)}>
-            + Add Area
-          </Button>
-          <AddAreaModal
-            visible={showAddModal}
-            onCancel={() => setShowAddModal(false)}
-            onOk={() => {
-              setShowAddModal(false);
-              loadProjectAreas(); 
-            }}
+          <AreaModal
+            mode="create"
             projectId={projectId as string}
+            onAreaChanged={loadProjectAreas}
+            buttonStyle={{ height: 36 }}
           />
         </div>
       </div>
