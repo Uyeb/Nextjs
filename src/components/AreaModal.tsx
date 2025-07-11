@@ -12,6 +12,7 @@ interface AreaModalProps {
   };
   onAreaChanged: () => void;
   buttonStyle?: React.CSSProperties;
+  areaType?: 0 | 1;
 }
 
 const AreaModal: React.FC<AreaModalProps> = ({
@@ -20,6 +21,7 @@ const AreaModal: React.FC<AreaModalProps> = ({
   area,
   onAreaChanged,
   buttonStyle,
+  areaType = 0,
 }) => {
   const [visible, setVisible] = useState(false);
   const [form] = Form.useForm();
@@ -97,7 +99,7 @@ const AreaModal: React.FC<AreaModalProps> = ({
 
       const payload = {
         typeOfWork: selected.id,
-        type: 0,
+        type: areaType,
         projectId,
       };
 
@@ -130,12 +132,20 @@ const AreaModal: React.FC<AreaModalProps> = ({
         icon={mode === "create" ? <PlusOutlined /> : <SyncOutlined />}
         onClick={openModal}
         style={
-          isEdit
-            ? { backgroundColor: "white", border: "1px solid #d9d9d9" }
+          mode === "edit"
+            ? {
+                backgroundColor: "#fff",
+                border: "1px solid #d9d9d9",
+                ...buttonStyle,
+              }
             : buttonStyle
         }
       >
-        {mode === "create" ? "Add Area" : ""}
+        {mode === "create"
+          ? areaType === 0
+            ? "Add new Area"
+            : "Report Creation"
+          : null}
       </Button>
 
       <Modal
@@ -143,7 +153,11 @@ const AreaModal: React.FC<AreaModalProps> = ({
         onCancel={closeModal}
         title={
           <span style={{ fontWeight: 600 }}>
-            {mode === "create" ? "Add new area" : "Edit area"}
+            {mode === "edit"
+              ? "Edit Area"
+              : areaType === 0
+              ? "Add new area"
+              : "Create Report"}
           </span>
         }
         confirmLoading={loading}
@@ -157,7 +171,11 @@ const AreaModal: React.FC<AreaModalProps> = ({
             loading={loading}
             onClick={handleSubmit}
           >
-            {mode === "create" ? "Add Area" : "Update Area"}
+            {mode === "edit"
+              ? "Update Area"
+              : areaType === 0
+              ? "Add Area"
+              : "Create Report"}
           </Button>,
         ]}
       >

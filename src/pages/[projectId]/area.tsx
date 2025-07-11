@@ -7,6 +7,7 @@ import axiosClient from "@/api/axiosClient";
 import { useRouter } from "next/router";
 import AreaModal from "@/components/AreaModal";
 import { message, Popconfirm } from "antd";
+import SettingModal from "@/components/SettingModal";
 
 interface ProjectArea {
   id: string;
@@ -18,6 +19,7 @@ interface ProjectArea {
   };
   totalList: number;
   totalPile: number;
+  type: number;
 }
 
 interface SortItem {
@@ -80,6 +82,7 @@ export default function ProjectAreas() {
           fileVersionDtos: item.fileVersionDtos,
           totalList: item.totalList,
           totalPile: item.totalPile,
+          type: item.type,
         }));
 
         setItems(listItem);
@@ -230,6 +233,7 @@ export default function ProjectAreas() {
       width: 140,
       render: (_, record) => (
         <div style={{ display: "flex", gap: 8 }}>
+          {record.type === 1 && <SettingModal areaId={record.id} />}
           <AreaModal
             mode="edit"
             projectId={projectId as string}
@@ -261,6 +265,13 @@ export default function ProjectAreas() {
       >
         <h2>List Area</h2>
         <div style={{ display: "flex", gap: 8 }}>
+          <AreaModal
+            mode="create"
+            projectId={projectId as string}
+            onAreaChanged={loadProjectAreas}
+            buttonStyle={{ height: 36 }}
+            areaType={1}
+          />
           <AreaModal
             mode="create"
             projectId={projectId as string}
