@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Modal, Tabs, Button, message } from "antd";
 import { SettingOutlined } from "@ant-design/icons";
-import Taba from "./Taba";
+import StandardValues from "./StandardValues";
 import axiosClient from "@/api/axiosClient";
 
 interface SettingModalProps {
@@ -12,7 +12,7 @@ const { TabPane } = Tabs;
 export default function SettingModal({ areaId }: SettingModalProps) {
   const [visible, setVisible] = useState(false);
   const [checkedKeys, setCheckedKeys] = useState(["2", "4", "5", "7"]);
-  const [settingObj, setSettingObj] = useState<any>({}); 
+  const [settingObj, setSettingObj] = useState<any>({});
 
   const handleOpen = async () => {
     setVisible(true);
@@ -22,7 +22,7 @@ export default function SettingModal({ areaId }: SettingModalProps) {
       );
       if (res.data?.success && res.data.result?.setting) {
         const parsed = JSON.parse(res.data.result.setting);
-        setSettingObj(parsed); 
+        setSettingObj(parsed);
         if (parsed.checkedKeys && parsed.checkedKeys.length > 0) {
           setCheckedKeys(parsed.checkedKeys);
         }
@@ -65,13 +65,31 @@ export default function SettingModal({ areaId }: SettingModalProps) {
           </Button>,
         ]}
       >
-        <Tabs defaultActiveKey="1">
-          <TabPane tab="基準値" key="1">
-            <Taba checkedKeys={checkedKeys} onCheckedChange={setCheckedKeys} />
-          </TabPane>
-          <TabPane tab="施工結果表" key="2" />
-          <TabPane tab="固化材" key="3" />
-        </Tabs>
+        <Tabs
+          defaultActiveKey="1"
+          items={[
+            {
+              label: "基準値",
+              key: "1",
+              children: (
+                <StandardValues
+                  checkedKeys={checkedKeys}
+                  onCheckedChange={setCheckedKeys}
+                />
+              ),
+            },
+            {
+              label: "施工結果表",
+              key: "2",
+              children: <div />,
+            },
+            {
+              label: "固化材",
+              key: "3",
+              children: <div />,
+            },
+          ]}
+        />
       </Modal>
     </>
   );
